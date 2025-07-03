@@ -1,10 +1,36 @@
 #!/bin/bash
+cat <<EOM
+Ubuntu Packages Installation Script
+=====================================================================
+This script updates your system, installs additional APT packages,
+and nice-to-have tools like git, jq... The script was tested on Debian
+12 (bookworm) and Ubuntu 20.04, 22.04, and 24.04,
+as well as Pop!_OS 22.04 LTS.
+
+NOTE: the script is set to abort on first error. If the installation
+completed you're probably OK even though you might have seen errors
+during the installation process.
+=====================================================================
+
+EOM
+
+if [[ -z "$FLAG_YES" ]]; then
+  # Remove implied default of Y - ghostinthenet 20220418
+  read -p "Are you sure you want to proceed [y/n]: " -n 1 -r
+  echo
+  if ! [[ $REPLY =~ [Yy] ]]; then
+   echo "Aborting..."
+   exit 1
+  fi
+  FLAG_YES="Y"
+fi
 #
 set -e
 #
 # Comment the next line if you want to have verbose installation messages
 #
 echo "Update package list and upgrade the existing packages"
+#># $SUDO apt-get update -y $FLAG_QUIET 
 . apt-get-update.sh
 $SUDO apt-get upgrade -y $FLAG_APT
 #
@@ -15,12 +41,17 @@ echo "Install missing packages (also a pretty long operation)"
 # linux-modules-extra-$(uname -r) should exist, but it won't if we're running
 # on a kernel that has been purged from the package server; in that case the
 # user will likely need to reboot.
-EXTRA=""
-if apt-cache show linux-modules-extra-$(uname -r) > /dev/null; then
-  EXTRA="linux-modules-extra-$(uname -r)"
+# Note: not all Ubuntu-based distributions might have this package available
+# or need it to be installed (e.g. Pop!_OS).
+EXTRA="linux-modules-extra-$(uname -r)"
+if [[ $EXTRA == $(apt-cache show $EXTRA | awk -F': ' '/^Package: /{print $2; }') ]]
+then
+  $SUDO apt-get -y $FLAG_APT install $EXTRA
+else
+  echo "SKIPPING package $EXTRA: package not available"
 fi
 # Added curl, which is not installed by default on Debian - ghostinthenet - 20220417
-$SUDO apt-get -y $FLAG_APT install python3 python3-setuptools ifupdown python3-pip curl $EXTRA
+$SUDO apt-get -y $FLAG_APT install python3 python3-setuptools ifupdown python3-pip curl
 echo "Install nice-to-have packages"
 $SUDO apt-get -y $FLAG_APT install git ack-grep jq tree sshpass colordiff
 #
@@ -30,3 +61,6 @@ echo "Install Python development and build modules"
 $SUDO apt-get -y $FLAG_APT install build-essential python3-dev libffi-dev libssh-dev
 echo "Installing XML libraries"
 $SUDO apt-get -y $FLAG_APT install libxslt1-dev libssl-dev
+echo
+echo "Installation complete."
+echo

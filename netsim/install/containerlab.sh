@@ -18,9 +18,10 @@ echo "Install Docker GPG key and set up Docker repository"
 # Begin code to identify distribution and populate DISTRIBUTION variable - ghostinthenet - 20220417
 if [ -f /etc/debian_version ]; then
  if [ -f /etc/lsb-release ]; then
-  if [[ $(grep DISTRIB_ID /etc/lsb-release | awk -F'=' '{print $2;}') == 'Ubuntu' ]]; then
+  # Make sure both Pop!_OS and Ubuntu are supported, but identify the DISTRIBUTION as 'ubuntu' for Docker downloads
+  if [[ $(awk -F'=' '$1~/DISTRIB_ID/ && $2~/(Pop|Ubuntu)/ {print "MATCH";}' /etc/lsb-release) == 'MATCH' ]]; then
    DISTRIBUTION='ubuntu'
-  # Exit if lsb-release distribution ID isn't Ubuntu - ghostinthenet 20220418
+  # Exit if lsb-release distribution ID isn't Pop or Ubuntu - ghostinthenet 20220418
   else
    echo "Installed distribution is an untested Ubuntu derivative..."
    exit 1
